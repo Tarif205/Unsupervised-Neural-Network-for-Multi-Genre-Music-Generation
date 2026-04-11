@@ -111,6 +111,8 @@ Example dataset:
 * Lakh MIDI Dataset
 * MAESTRO Dataset
 
+**Note:** The `data/processed/` directory containing preprocessed `.npy` files is not included in this repository due to size constraints (2.6+ GB). Run the preprocessing pipeline to generate these files locally.
+
 ---
 
 ### Step 2 — Run Preprocessing
