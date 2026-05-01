@@ -25,7 +25,7 @@ def main():
         dropout    = DROPOUT,
     ).to(DEVICE)
 
-    ckpt = os.path.join(MODEL_DIR, 'task1_lstm_autoencoder_best_v2.pt')
+    ckpt = os.path.join(MODEL_DIR, 'task1_lstm_autoencoder_best.pt')
     model.load_state_dict(torch.load(ckpt, map_location=DEVICE, weights_only=True))
     model.eval()
     print(f'✅ Loaded: {ckpt}')
@@ -34,7 +34,7 @@ def main():
     dataset = GrooveDataset(split='test')
     loader  = DataLoader(dataset, batch_size=1, shuffle=True)
 
-    out_dir = os.path.join(MIDI_DIR, 'task1_v2')
+    out_dir = os.path.join(MIDI_DIR, 'task1')
     os.makedirs(out_dir, exist_ok=True)
 
     saved = 0
@@ -49,12 +49,12 @@ def main():
 
             print(f'Sample {saved+1} - min:{roll.min():.4f} max:{roll.max():.4f} mean:{roll.mean():.6f}')
 
-            path = os.path.join(out_dir, f'task1_v2_sample_{saved+1:02d}.mid')
+            path = os.path.join(out_dir, f'task1_sample_{saved+1:02d}.mid')
             piano_roll_to_midi(
                 piano_roll  = roll,
                 output_path = path,
                 fs          = MIDI_FS,
-                threshold   = 0.05,   # was 0.10
+                threshold   = 0.1,   # was 0.10
             )
 
             # Verify notes

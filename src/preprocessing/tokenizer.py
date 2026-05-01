@@ -19,3 +19,5 @@ def tokenize(piano_roll):
     # Flatten row-major: frame0_pitch0, frame0_pitch1, ..., frameT_pitch87
     # This preserves time-major order so reshape back to (T, 88) is correct.
     return piano_roll.flatten().astype(np.float32)
+
+

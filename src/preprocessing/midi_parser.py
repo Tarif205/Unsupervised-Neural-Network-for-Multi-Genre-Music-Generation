@@ -30,3 +30,5 @@ def parse_midi(path):
             notes.append((note.start, note.end, note.pitch, note.velocity))
 
     return notes
+
+
