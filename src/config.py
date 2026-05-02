@@ -29,7 +29,7 @@ REPRESENTATION = "piano_roll"
 # This gives finer timing resolution for piano music
 SEQ_LEN      = 128   # faculty minimum — covers ~1.28s at fs=100
 FEATURE_SIZE = 88    # piano keys MIDI 21 (A0) to 108 (C8)
-MIDI_FS      = 100   # frames per second (10ms resolution)
+MIDI_FS      = 16   # frames per second (10ms resolution)
 
 # Non-overlapping windows — no data leakage
 # Set to SEQ_LEN//2 for 50% overlap (more samples)
