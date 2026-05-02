@@ -1,105 +1,60 @@
 # src/training/train_ae_v3.py
-
-import os, sys
-import matplotlib.pyplot as plt
-import torch
-import torch.nn as nn
+import os, sys, torch
+import torch.nn.functional as F
 from torch.utils.data import DataLoader
+import matplotlib.pyplot as plt
 
 CURRENT_DIR = os.path.dirname(__file__)
-SRC_DIR = os.path.abspath(os.path.join(CURRENT_DIR, '..'))
+SRC_DIR     = os.path.abspath(os.path.join(CURRENT_DIR, '..'))
 if SRC_DIR not in sys.path:
-    sys.path.append(SRC_DIR)
+    sys.path.insert(0, SRC_DIR)
 
-from config import *
+from config import (
+    MODEL_DIR, PLOT_DIR, DEVICE, FEATURE_SIZE,
+    HIDDEN_DIM, LATENT_DIM, NUM_LAYERS, DROPOUT,
+    BATCH_SIZE, EPOCHS, LR, CLIP_GRAD,
+)
 from dataset import GrooveDataset
-from models.autoencoder import LSTMAutoencoder
+from models.autoencoder import LSTMAutoencoder, FocalLoss
 
 
-# ─────────────────────────────────────────────
-# Seed
-# ─────────────────────────────────────────────
-def set_seed(seed):
-    torch.manual_seed(seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(seed)
-
-
-# ─────────────────────────────────────────────
-# BCE Loss (fixes sparsity issue)
-# ─────────────────────────────────────────────
-criterion = nn.BCELoss()
-
-
-# ─────────────────────────────────────────────
-# Training / Validation step
-# ─────────────────────────────────────────────
-def run_epoch(model, loader, optimizer=None):
+def run_epoch(model, loader, criterion, optimizer=None):
     is_train = optimizer is not None
     model.train() if is_train else model.eval()
 
-    total_loss, total_samples = 0.0, 0
+    total_loss = total_items = 0
 
     for batch in loader:
-        batch = batch.to(DEVICE)
-
+        x = batch.to(DEVICE)
         if is_train:
             optimizer.zero_grad()
 
-        # Forward
-        output = model(batch)
+        logits = model(x)
+        loss   = criterion(logits, x)  # x is target (binarized)
 
-        # Apply sigmoid (VERY IMPORTANT for BCE)
-        output = torch.sigmoid(output)
-
-        # Loss
-        loss = criterion(output, batch)
-
-        # Backprop
         if is_train:
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), CLIP_GRAD)
             optimizer.step()
 
-        total_loss += loss.item() * batch.size(0)
-        total_samples += batch.size(0)
+        total_loss  += loss.item() * x.size(0)
+        total_items += x.size(0)
 
-    return total_loss / total_samples if total_samples > 0 else 0.0
+    return total_loss / total_items
 
 
-# ─────────────────────────────────────────────
-# Main
-# ─────────────────────────────────────────────
 def main():
-    set_seed(SEED)
-
     os.makedirs(MODEL_DIR, exist_ok=True)
     os.makedirs(PLOT_DIR,  exist_ok=True)
 
-    # ── Dataset ──────────────────────────────
     train_dataset = GrooveDataset(split='train')
     val_dataset   = GrooveDataset(split='val')
 
-    train_loader = DataLoader(
-        train_dataset,
-        batch_size=BATCH_SIZE,
-        shuffle=True,
-        num_workers=0,
-        pin_memory=(DEVICE.type == "cuda"),
-    )
+    train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
+    val_loader   = DataLoader(val_dataset,   batch_size=BATCH_SIZE, shuffle=False)
 
-    val_loader = DataLoader(
-        val_dataset,
-        batch_size=BATCH_SIZE,
-        shuffle=False,
-        num_workers=0,
-        pin_memory=(DEVICE.type == "cuda"),
-    )
+    print(f'Train: {len(train_dataset):,} | Val: {len(val_dataset):,}')
 
-    print(f'Train samples: {len(train_dataset):,}')
-    print(f'Val   samples: {len(val_dataset):,}')
-
-    # ── Model ────────────────────────────────
     model = LSTMAutoencoder(
         input_dim  = FEATURE_SIZE,
         hidden_dim = HIDDEN_DIM,
@@ -108,43 +63,41 @@ def main():
         dropout    = DROPOUT,
     ).to(DEVICE)
 
+    # Faculty recommended: Focal Loss
+    criterion = FocalLoss(gamma=2.0, pos_weight=20.0)
     optimizer = torch.optim.Adam(model.parameters(), lr=LR)
 
-    # ── Logging ──────────────────────────────
-    best_val_loss = float('inf')
-    train_losses, val_losses = [], []
+    best_val   = float('inf')
+    train_hist = []
+    val_hist   = []
+    best_path  = os.path.join(MODEL_DIR, 'task1_ae_v3_best.pt')
 
-    best_model_path = os.path.join(MODEL_DIR, 'task1_lstm_autoencoder_v3_best.pt')
-    plot_path       = os.path.join(PLOT_DIR,  'task1_loss_curve_v3.png')
+    for epoch in range(1, EPOCHS + 1):
+        tr = run_epoch(model, train_loader, criterion, optimizer)
+        vl = run_epoch(model, val_loader,   criterion)
 
-    # ── Training loop ────────────────────────
-    for epoch in range(EPOCHS):
-        train_loss = run_epoch(model, train_loader, optimizer)
-        val_loss   = run_epoch(model, val_loader)
+        train_hist.append(tr)
+        val_hist.append(vl)
 
-        train_losses.append(train_loss)
-        val_losses.append(val_loss)
+        print(f'Epoch {epoch:02d}/{EPOCHS} | Train: {tr:.6f} | Val: {vl:.6f}')
 
-        print(f'Epoch {epoch+1}/{EPOCHS} | Train Loss: {train_loss:.6f} | Val Loss: {val_loss:.6f}')
-
-        if val_loss < best_val_loss:
-            best_val_loss = val_loss
-            torch.save(model.state_dict(), best_model_path)
+        if vl < best_val:
+            best_val = vl
+            torch.save(model.state_dict(), best_path)
             print(f'  ✅ Saved best model')
 
-    # ── Plot ────────────────────────────────
+    # Plot
     plt.figure(figsize=(8, 5))
-    plt.plot(range(1, EPOCHS+1), train_losses, label='Train Loss')
-    plt.plot(range(1, EPOCHS+1), val_losses,   label='Val Loss')
+    plt.plot(train_hist, label='Train')
+    plt.plot(val_hist,   label='Val')
     plt.xlabel('Epoch')
-    plt.ylabel('BCE Loss')
-    plt.title('Task 1 LSTM Autoencoder — BCE Loss Curve (v3)')
+    plt.ylabel('Focal Loss')
+    plt.title('Task 1 AE v3 — Focal Loss Curve')
     plt.legend()
     plt.tight_layout()
-    plt.savefig(plot_path)
+    plt.savefig(os.path.join(PLOT_DIR, 'task1_ae_v3_loss.png'), dpi=150)
     plt.close()
-
-    print(f'📊 Loss plot saved → {plot_path}')
+    print('✅ Training complete!')
 
 
 if __name__ == '__main__':

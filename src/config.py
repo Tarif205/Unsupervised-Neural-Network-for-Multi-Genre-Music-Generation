@@ -16,60 +16,56 @@ PLOT_DIR      = os.path.join(OUTPUT_DIR, "plots")
 MIDI_DIR      = os.path.join(OUTPUT_DIR, "generated_midis")
 
 # ── Dataset identity ──────────────────────────────────────────
-# DATASET_NAME    = "groove_midi"          # groove_midi | maestro | lakh
-# DATASET_SUBSET  = "drummer1/session1"    # subfolder used; "all" if full dataset
-# GENRES          = ["drums", "rhythm"]    # genres present in this dataset
-
-DATASET_NAME    = "maestro"          # groove_midi | maestro | lakh
-DATASET_SUBSET  = "all"    # subfolder used; "all" if full dataset
-GENRES          = ["piano"]    # genres present in this dataset
+DATASET_NAME   = "maestro"
+DATASET_SUBSET = "all"
+GENRES         = ["piano"]
 
 # ── Representation ────────────────────────────────────────────
-# "piano_roll" : 2-D matrix  (T x 88),  values = normalised velocity
-# "token"      : 1-D sequence of discrete event tokens
-REPRESENTATION  = "piano_roll"
+REPRESENTATION = "piano_roll"
 
 # ── Preprocessing / windowing ─────────────────────────────────
-SEQ_LEN         = 300    # frames per window (= 5 seconds at 100 fps)
-FEATURE_SIZE    = 88     # piano keys, MIDI 21 (A0) to 108 (C8)
+# Faculty guide: "At fs=16, 128 time steps = 8 seconds of music"
+# We use fs=100 (10ms resolution) with 128 frames = 1.28 seconds
+# This gives finer timing resolution for piano music
+SEQ_LEN      = 128   # faculty minimum — covers ~1.28s at fs=100
+FEATURE_SIZE = 88    # piano keys MIDI 21 (A0) to 108 (C8)
+MIDI_FS      = 100   # frames per second (10ms resolution)
 
-# Time grid: 1 frame = 1/MIDI_FS seconds
-# At MIDI_FS=100 -> 10 ms resolution, ~1/16-note at 150 BPM
-MIDI_FS         = 100    # frames per second
+# Non-overlapping windows — no data leakage
+# Set to SEQ_LEN//2 for 50% overlap (more samples)
+STRIDE       = 128   # = SEQ_LEN for non-overlapping windows
 
-# Sliding-window stride.
-# STRIDE = SEQ_LEN  -> non-overlapping windows (no data leakage)
-# STRIDE < SEQ_LEN  -> overlapping windows (more training samples)
-STRIDE          = 250   # set to 250 for 50% overlap
-SAVE_DTYPE = "float32"  # "float32" for max precision, "float16" to save disk space (may cause issues on some platforms)    
-# Quality filters — windows that fail these checks are discarded
-# MIN_ACTIVE_NOTES    = 10     # minimum total note-on events in a window
-# MIN_SEQ_COVERAGE    = 0.02   # minimum fraction of active frames (2%)
-MIN_ACTIVE_NOTES    = 30     # minimum total note-on events in a window
-MIN_SEQ_COVERAGE    = 0.05
- 
-SKIP_EMPTY_WINDOWS  = True   # drop windows that are entirely silent
+SAVE_DTYPE   = "float32"
 
-# ── Train / val / test split ratios ───────────────────────────
+# Quality filters
+MIN_ACTIVE_NOTES   = 30     # minimum note-on events per window
+MIN_SEQ_COVERAGE   = 0.05   # minimum fraction of active frames (5%)
+SKIP_EMPTY_WINDOWS = True
+
+# ── Train / val / test split ──────────────────────────────────
 TRAIN_RATIO = 0.80
 VAL_RATIO   = 0.10
-TEST_RATIO  = 0.10          # must sum to 1.0
+TEST_RATIO  = 0.10
 
 # ── Model (Task 1 & 2 shared LSTM backbone) ───────────────────
-HIDDEN_DIM  = 256
-LATENT_DIM  = 128
-NUM_LAYERS  = 2
-DROPOUT     = 0.3
+# Faculty: "2-layer LSTM, hidden 256, latent 64 is reasonable"
+HIDDEN_DIM = 256
+LATENT_DIM = 64     # faculty says 64 or 128
+NUM_LAYERS = 2
+DROPOUT    = 0.3
 
 # ── Training ──────────────────────────────────────────────────
-BATCH_SIZE  = 32
-EPOCHS      = 15
-LR          = 1e-3
-CLIP_GRAD   = 1.0
-SEED        = 42
+# Faculty: "batch size 64, reduce to 32 if GPU memory insufficient"
+# RTX 3050 4GB → use 32
+BATCH_SIZE = 32
+EPOCHS     = 30     # more epochs needed with focal loss
+LR         = 1e-3   # faculty: "Adam with lr=1e-3 as starting point"
+CLIP_GRAD  = 1.0
+SEED       = 42
 
 # ── VAE (Task 2) ──────────────────────────────────────────────
-BETA        = 1.0    # KL weight; >1 = beta-VAE (more disentangled)
+BETA         = 1.0   # final KL weight after annealing
+KL_WARMUP    = 10    # epochs with β=0 before annealing starts
 
 # ── Transformer (Task 3) ──────────────────────────────────────
 NHEAD           = 4
@@ -79,13 +75,14 @@ TF_DROPOUT      = 0.1
 TF_MAX_LEN      = 512
 
 # ── Generation ────────────────────────────────────────────────
-MIDI_THRESHOLD  = 0.1   # minimum activation to count as note-on
-MIDI_TEMPO      = 120.0  # BPM of exported MIDI files
+# Faculty: "lower threshold below 0.5 since model underestimates notes"
+MIDI_THRESHOLD = 0.15
+MIDI_TEMPO     = 120.0
 
 # ── Device ────────────────────────────────────────────────────
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# ── Sanity checks (run on import) ─────────────────────────────
+# ── Sanity checks ─────────────────────────────────────────────
 assert abs(TRAIN_RATIO + VAL_RATIO + TEST_RATIO - 1.0) < 1e-6, \
     "Split ratios must sum to 1.0"
 assert STRIDE > 0, "STRIDE must be positive"

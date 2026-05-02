@@ -74,10 +74,22 @@ class GrooveDataset(Dataset):
     def __len__(self):
         return len(self.data)
 
+    # def __getitem__(self, idx):
+    #     # .copy() fetches only this one sample from disk (~176 KB)
+    #     # then immediately converts and normalises in RAM
+    #     x = self.data[idx].copy().astype(np.float32)   # (500, 88)
+    #     x = x / 127.0                                   # → [0.0, 1.0]
+    #     # return torch.tensor(x)                          # (SEQ_LEN, FEATURE_SIZE)
+    #     return torch.from_numpy(x)
+
     def __getitem__(self, idx):
-        # .copy() fetches only this one sample from disk (~176 KB)
-        # then immediately converts and normalises in RAM
-        x = self.data[idx].copy().astype(np.float32)   # (500, 88)
-        x = x / 127.0                                   # → [0.0, 1.0]
-        # return torch.tensor(x)                          # (SEQ_LEN, FEATURE_SIZE)
+    # load one sample
+        x = self.data[idx].copy().astype(np.float32)
+
+        # normalize to [0,1]
+        x = x / 127.0
+
+        # 🔥 convert to binary piano roll
+        x = (x > 0).astype(np.float32)
+
         return torch.from_numpy(x)
