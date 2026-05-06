@@ -46,7 +46,7 @@ def main():
             piano_roll  = roll,
             output_path = path,
             fs          = MIDI_FS,
-            threshold   = 0.10,
+            threshold   = 0.05,
         )
         m     = pretty_midi.PrettyMIDI(path)
         notes = sum(len(inst.notes) for inst in m.instruments)

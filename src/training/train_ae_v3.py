@@ -64,7 +64,7 @@ def main():
     ).to(DEVICE)
 
     # Faculty recommended: Focal Loss
-    criterion = FocalLoss(gamma=2.0, pos_weight=20.0)
+    criterion = FocalLoss(gamma=2.0, pos_weight=20)
     optimizer = torch.optim.Adam(model.parameters(), lr=LR)
 
     best_val   = float('inf')

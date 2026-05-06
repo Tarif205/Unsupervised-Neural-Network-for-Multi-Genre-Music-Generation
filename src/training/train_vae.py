@@ -1,203 +1,164 @@
-# Change this:
-import os
-import sys
-import math
-import torch
-import torch.nn as nn
-from torch.utils.data import DataLoader
-import matplotlib.pyplot as plt
-
-sys.path.append(os.path.dirname(__file__))
-
-# To this:
-import os
-import sys
-import math
-import torch
-import torch.nn as nn
+# src/training/train_vae.py
+import os, sys, torch
+import torch.nn.functional as F
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 
 CURRENT_DIR = os.path.dirname(__file__)
-SRC_DIR = os.path.abspath(os.path.join(CURRENT_DIR, '..'))
+SRC_DIR     = os.path.abspath(os.path.join(CURRENT_DIR, '..'))
 if SRC_DIR not in sys.path:
     sys.path.insert(0, SRC_DIR)
 
 from config import (
-    MODEL_DIR,
-    PLOT_DIR,
-    DEVICE,
-    FEATURE_SIZE,
-    HIDDEN_DIM,
-    LATENT_DIM,
-    NUM_LAYERS,
-    DROPOUT,
-    BATCH_SIZE,
-    EPOCHS,
-    LR,
-    CLIP_GRAD,
-    BETA,
+    MODEL_DIR, PLOT_DIR, DEVICE, FEATURE_SIZE,
+    HIDDEN_DIM, LATENT_DIM, NUM_LAYERS, DROPOUT,
+    BATCH_SIZE, EPOCHS, LR, CLIP_GRAD,
 )
 from dataset import GrooveDataset
 from models.vae import MusicVAE
 
 
-def check_dataset(split_name):
-    dataset = GrooveDataset(split=split_name)
-    print(split_name, "size:", len(dataset))
-
-    if len(dataset) == 0:
-        raise ValueError(split_name + " dataset is empty.")
-
-    x = dataset[0]
-    print(split_name, "sample shape:", tuple(x.shape))
-    print(split_name, "value range:", float(x.min()), "to", float(x.max()))
-    return dataset
+def focal_loss(logits, targets, gamma=2.0, pos_weight=84.0):
+    bce_loss = F.binary_cross_entropy_with_logits(
+        logits, targets,
+        pos_weight=torch.tensor(pos_weight, device=logits.device),
+        reduction='none'
+    )
+    probs   = torch.sigmoid(logits)
+    pt      = torch.where(targets > 0.15, probs, 1 - probs)
+    focal_w = (1 - pt) ** gamma
+    return (focal_w * bce_loss).mean()
 
 
 def kl_divergence(mu, logvar):
-    kl = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp(), dim=1)
-    return kl.mean()
+    return -0.5 * torch.mean(1 + logvar - mu.pow(2) - logvar.exp())
 
 
-def run_epoch(model, loader, criterion, optimizer=None):
-    if optimizer is None:
-        model.eval()
-    else:
-        model.train()
+def get_beta(epoch, warmup=10, beta_max=1.0, total=30):
+    """KL annealing: 0 during warmup, linear increase after."""
+    if epoch <= warmup:
+        return 0.0
+    return beta_max * (epoch - warmup) / (total - warmup)
 
-    total_loss = 0.0
-    total_recon = 0.0
-    total_kl = 0.0
-    total_items = 0
+
+def run_epoch(model, loader, optimizer=None, beta=0.0):
+    is_train = optimizer is not None
+    model.train() if is_train else model.eval()
+
+    total_loss = total_recon = total_kl = total_items = 0
 
     for batch in loader:
         x = batch.to(DEVICE)
-
-        if optimizer is not None:
+        if is_train:
             optimizer.zero_grad()
 
-        recon, mu, logvar = model(x)
-        recon_loss = criterion(recon, x)
-        kl_loss = kl_divergence(mu, logvar)
-        loss = recon_loss + (BETA * kl_loss)
+        logits, mu, logvar = model(x)
+        recon = focal_loss(logits, x)
+        kl    = kl_divergence(mu, logvar)
+        loss  = recon + beta * kl
 
-        if optimizer is not None:
+        if is_train:
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), CLIP_GRAD)
             optimizer.step()
 
-        batch_size = x.size(0)
-        total_loss += loss.item() * batch_size
-        total_recon += recon_loss.item() * batch_size
-        total_kl += kl_loss.item() * batch_size
-        total_items += batch_size
+        bs           = x.size(0)
+        total_loss  += loss.item()  * bs
+        total_recon += recon.item() * bs
+        total_kl    += kl.item()    * bs
+        total_items += bs
 
-    avg_loss = total_loss / total_items
-    avg_recon = total_recon / total_items
-    avg_kl = total_kl / total_items
-    return avg_loss, avg_recon, avg_kl
+    n = total_items
+    return total_loss/n, total_recon/n, total_kl/n
 
 
 def main():
     os.makedirs(MODEL_DIR, exist_ok=True)
-    os.makedirs(PLOT_DIR, exist_ok=True)
+    os.makedirs(PLOT_DIR,  exist_ok=True)
 
-    train_dataset = check_dataset("train")
-    val_dataset = check_dataset("val")
+    train_dataset = GrooveDataset(split='train')
+    val_dataset   = GrooveDataset(split='val')
 
     train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
+    val_loader   = DataLoader(val_dataset,   batch_size=BATCH_SIZE, shuffle=False)
+
+    print(f'Train: {len(train_dataset):,} | Val: {len(val_dataset):,}')
 
     model = MusicVAE(
-        input_dim=FEATURE_SIZE,
-        hidden_dim=HIDDEN_DIM,
-        latent_dim=LATENT_DIM,
-        num_layers=NUM_LAYERS,
-        dropout=DROPOUT,
+        input_dim  = FEATURE_SIZE,
+        hidden_dim = HIDDEN_DIM,
+        latent_dim = LATENT_DIM,
+        num_layers = NUM_LAYERS,
+        dropout    = DROPOUT,
     ).to(DEVICE)
 
-    criterion = nn.MSELoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=LR)
+    optimizer  = torch.optim.Adam(model.parameters(), lr=LR)
+    best_val   = float('inf')
 
-    best_val_loss = float("inf")
-    train_losses = []
-    val_losses = []
-    train_recon_losses = []
-    val_recon_losses = []
-    train_kl_losses = []
-    val_kl_losses = []
+    # ── same name as before ────────────────────────────────────
+    best_path  = os.path.join(MODEL_DIR, 'best_vae.pt')
+
+    all_loss  = []
+    all_recon = []
+    all_kl    = []
+    all_beta  = []
 
     for epoch in range(1, EPOCHS + 1):
-        train_loss, train_recon, train_kl = run_epoch(model, train_loader, criterion, optimizer)
-        val_loss, val_recon, val_kl = run_epoch(model, val_loader, criterion, optimizer=None)
+        beta = get_beta(epoch, warmup=10, beta_max=1.0, total=EPOCHS)
+        all_beta.append(beta)
 
-        train_losses.append(train_loss)
-        val_losses.append(val_loss)
-        train_recon_losses.append(train_recon)
-        val_recon_losses.append(val_recon)
-        train_kl_losses.append(train_kl)
-        val_kl_losses.append(val_kl)
+        tr_loss, tr_recon, tr_kl = run_epoch(model, train_loader, optimizer, beta)
+        vl_loss, vl_recon, vl_kl = run_epoch(model, val_loader,   None,      beta)
+
+        all_loss.append((tr_loss, vl_loss))
+        all_recon.append((tr_recon, vl_recon))
+        all_kl.append((tr_kl, vl_kl))
 
         print(
-            "Epoch {}/{} | Train Loss: {:.6f} | Val Loss: {:.6f} | "
-            "Train Recon: {:.6f} | Val Recon: {:.6f} | Train KL: {:.6f} | Val KL: {:.6f}".format(
-                epoch, EPOCHS, train_loss, val_loss, train_recon, val_recon, train_kl, val_kl
-            )
+            f'Epoch {epoch:02d}/{EPOCHS} | β={beta:.2f} | '
+            f'Loss={tr_loss:.5f}/{vl_loss:.5f} | '
+            f'Recon={tr_recon:.5f}/{vl_recon:.5f} | '
+            f'KL={tr_kl:.5f}/{vl_kl:.5f}'
         )
 
-        if val_loss < best_val_loss:
-            best_val_loss = val_loss
-            save_path = os.path.join(MODEL_DIR, "best_vae.pt")
-            torch.save(model.state_dict(), save_path)
-            print("Saved best model to:", save_path)
+        if vl_loss < best_val:
+            best_val = vl_loss
+            torch.save(model.state_dict(), best_path)
+            print(f'  ✅ Saved best model → {best_path}')
 
-    # Total loss plot
-    plt.figure(figsize=(8, 5))
-    plt.plot(train_losses, label="Train Loss")
-    plt.plot(val_losses, label="Val Loss")
-    plt.xlabel("Epoch")
-    plt.ylabel("Loss")
-    plt.title("Task 2 VAE Loss")
-    plt.legend()
+    # ── Plots ──────────────────────────────────────────────────
+    epochs_r = list(range(1, EPOCHS + 1))
+    fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+    fig.suptitle('Task 2 VAE — Focal Loss + KL Annealing', fontsize=13)
+
+    axes[0].plot(epochs_r, [x[0] for x in all_loss],  label='Train', color='steelblue')
+    axes[0].plot(epochs_r, [x[1] for x in all_loss],  label='Val',   color='coral', linestyle='--')
+    axes[0].set_title('Total Loss')
+    axes[0].set_xlabel('Epoch')
+    axes[0].legend()
+    axes[0].grid(alpha=0.3)
+
+    axes[1].plot(epochs_r, [x[0] for x in all_kl], label='Train KL', color='steelblue')
+    axes[1].plot(epochs_r, [x[1] for x in all_kl], label='Val KL',   color='coral', linestyle='--')
+    axes[1].set_title('KL Divergence')
+    axes[1].set_xlabel('Epoch')
+    axes[1].legend()
+    axes[1].grid(alpha=0.3)
+
+    axes[2].plot(epochs_r, all_beta, color='green', linewidth=2)
+    axes[2].set_title('KL Annealing Schedule (β)')
+    axes[2].set_xlabel('Epoch')
+    axes[2].set_ylabel('β')
+    axes[2].grid(alpha=0.3)
+
     plt.tight_layout()
-    loss_plot_path = os.path.join(PLOT_DIR, "vae_loss_curve.png")
-    plt.savefig(loss_plot_path)
+    plot_path = os.path.join(PLOT_DIR, 'task2_vae_loss.png')
+    plt.savefig(plot_path, dpi=150)
     plt.close()
-
-    # Reconstruction loss plot
-    plt.figure(figsize=(8, 5))
-    plt.plot(train_recon_losses, label="Train Recon")
-    plt.plot(val_recon_losses, label="Val Recon")
-    plt.xlabel("Epoch")
-    plt.ylabel("Reconstruction Loss")
-    plt.title("Task 2 VAE Reconstruction Loss")
-    plt.legend()
-    plt.tight_layout()
-    recon_plot_path = os.path.join(PLOT_DIR, "vae_recon_loss_curve.png")
-    plt.savefig(recon_plot_path)
-    plt.close()
-
-    # KL loss plot
-    plt.figure(figsize=(8, 5))
-    plt.plot(train_kl_losses, label="Train KL")
-    plt.plot(val_kl_losses, label="Val KL")
-    plt.xlabel("Epoch")
-    plt.ylabel("KL Loss")
-    plt.title("Task 2 VAE KL Loss")
-    plt.legend()
-    plt.tight_layout()
-    kl_plot_path = os.path.join(PLOT_DIR, "vae_kl_loss_curve.png")
-    plt.savefig(kl_plot_path)
-    plt.close()
-
-    print("Training complete.")
-    print("Best val loss:", best_val_loss)
-    print("Saved plots:")
-    print(loss_plot_path)
-    print(recon_plot_path)
-    print(kl_plot_path)
+    print(f'\n✅ Training complete!')
+    print(f'   Best val loss : {best_val:.6f}')
+    print(f'   Plot saved    : {plot_path}')
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

@@ -16,9 +16,14 @@ PLOT_DIR      = os.path.join(OUTPUT_DIR, "plots")
 MIDI_DIR      = os.path.join(OUTPUT_DIR, "generated_midis")
 
 # ── Dataset identity ──────────────────────────────────────────
-DATASET_NAME   = "maestro"
-DATASET_SUBSET = "all"
-GENRES         = ["piano"]
+# DATASET_NAME   = "maestro"
+# DATASET_SUBSET = "all"
+# GENRES         = ["piano"]
+
+# ── Dataset identity ──────────────────────────────────────────
+DATASET_NAME    = "groove_midi"          # groove_midi | maestro | lakh
+DATASET_SUBSET  = "drummer1/session1"    # subfolder used; "all" if full dataset
+GENRES          = ["drums", "rhythm"]    # genres present in this dataset
 
 # ── Representation ────────────────────────────────────────────
 REPRESENTATION = "piano_roll"
