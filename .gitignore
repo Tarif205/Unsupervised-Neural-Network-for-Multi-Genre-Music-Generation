@@ -18,5 +18,4 @@ data/processed/
 
 data/raw_midi/
 *.zip
-outputs/models/
-outputs/generated_midis/
+
