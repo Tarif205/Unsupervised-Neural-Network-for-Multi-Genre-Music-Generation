@@ -51,7 +51,7 @@ class LSTMAutoencoder(nn.Module):
         self.latent_to_hidden = nn.Linear(latent_dim, hidden_dim)
 
         # ── Decoder input = hidden + z concatenated ──────────────
-        # Faculty fix: concatenate z at every decoder step
+        # fix: concatenate z at every decoder step
         self.decoder = nn.LSTM(
             input_size  = hidden_dim + latent_dim,  # ← concatenate z
             hidden_size = hidden_dim,

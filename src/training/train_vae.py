@@ -124,7 +124,7 @@ def main():
         if vl_loss < best_val:
             best_val = vl_loss
             torch.save(model.state_dict(), best_path)
-            print(f'  ✅ Saved best model → {best_path}')
+            print(f'  Saved best model → {best_path}')
 
     # ── Plots ──────────────────────────────────────────────────
     epochs_r = list(range(1, EPOCHS + 1))
@@ -155,7 +155,7 @@ def main():
     plot_path = os.path.join(PLOT_DIR, 'task2_vae_loss.png')
     plt.savefig(plot_path, dpi=150)
     plt.close()
-    print(f'\n✅ Training complete!')
+    print(f'\nTraining complete!')
     print(f'   Best val loss : {best_val:.6f}')
     print(f'   Plot saved    : {plot_path}')
 

@@ -29,7 +29,7 @@ def main():
     model.load_state_dict(torch.load(ckpt, map_location=DEVICE, weights_only=True))
     model.eval()
 
-    print(f'✅ Loaded: {ckpt}')
+    print(f'Loaded: {ckpt}')
 
     # ── Load dataset ─────────────────────────
     dataset = GrooveDataset(split='test')
@@ -39,7 +39,7 @@ def main():
 
     saved = 0
 
-    # 🔥 Pick RANDOM DISTINCT samples manually
+    # Pick RANDOM DISTINCT samples manually
     indices = torch.randperm(len(dataset))
 
     with torch.no_grad():
@@ -53,7 +53,7 @@ def main():
 
             batch = batch.to(DEVICE)
 
-            # 🔥 RANDOM NOISE (different each sample)
+            # RANDOM NOISE (different each sample)
             noise_level = np.random.uniform(0.05, 0.15)
             noisy_batch = batch + noise_level * torch.randn_like(batch)
 
@@ -64,7 +64,7 @@ def main():
 
             roll = recon[0].cpu().numpy()
 
-            # 🔥 ADD SMALL RANDOMNESS (ensures variation)
+            # ADD SMALL RANDOMNESS (ensures variation)
             roll = roll + 0.03 * np.random.randn(*roll.shape)
             roll = np.clip(roll, 0, 1)
 
@@ -96,7 +96,7 @@ def main():
             if saved >= 5:
                 break
 
-    print(f'\n✅ Done! {saved} VALID samples saved to {out_dir}')
+    print(f'\nDone! {saved} VALID samples saved to {out_dir}')
 
 
 if __name__ == '__main__':

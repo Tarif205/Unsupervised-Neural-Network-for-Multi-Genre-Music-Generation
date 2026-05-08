@@ -46,7 +46,7 @@ def evaluate_midi_files(
 
     for path in generated_paths:
         if not os.path.exists(path):
-            print(f"  ⚠️ File not found: {path}")
+            print(f"  File not found: {path}")
             continue
 
         rd  = rhythm_diversity_from_midi(path)
@@ -147,7 +147,7 @@ def generate_random_baseline(n_samples: int = 5,
         midi.write(path)
         paths.append(path)
 
-    print(f"✅ {n_samples} random baseline samples saved to {out_dir}")
+    print(f"{n_samples} random baseline samples saved to {out_dir}")
     return paths
 
 
@@ -219,5 +219,5 @@ def generate_markov_baseline(train_midi_paths: List[str],
         midi.write(path)
         paths.append(path)
 
-    print(f"✅ {n_samples} Markov baseline samples saved to {out_dir}")
+    print(f"{n_samples} Markov baseline samples saved to {out_dir}")
     return paths

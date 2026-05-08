@@ -1,7 +1,7 @@
 # src/generation/generate_task3.py
 """
 Task 3 — Generate 10 long-sequence MIDI compositions
-Faculty guide:
+guide:
 - "Start with seed token (e.g. Bar)"
 - "Autoregressively sample next token"
 - "Use temperature sampling with T in [0.8, 1.2]"
@@ -34,7 +34,7 @@ def load_tokenizer():
     if not os.path.exists(tokenizer_path):
         raise FileNotFoundError(f'Tokenizer not found: {tokenizer_path}')
     tokenizer = REMI(params=Path(tokenizer_path))
-    print(f'✅ Tokenizer loaded | vocab={len(tokenizer.vocab)}')
+    print(f'Tokenizer loaded | vocab={len(tokenizer.vocab)}')
     return tokenizer
 
 
@@ -55,12 +55,12 @@ def load_model(vocab_size):
 
     model.load_state_dict(torch.load(ckpt, map_location=DEVICE, weights_only=True))
     model.eval()
-    print(f'✅ Model loaded: {ckpt}')
+    print(f'Model loaded: {ckpt}')
     return model
 
 
 def get_seed_token(tokenizer):
-    """Get Bar token ID as seed — faculty recommendation."""
+    """Get Bar token ID as seed — recommendation."""
     vocab = tokenizer.vocab
     # Try different Bar token names in REMI
     for name in ['Bar_None', 'Bar', 'BAR']:
@@ -110,7 +110,7 @@ def get_seed_token(tokenizer):
 #         return True, len(token_ids)
 
 #     except Exception as e:
-#         print(f'  ⚠️  MIDI conversion failed: {e}')
+#         print(f'  MIDI conversion failed: {e}')
 #         return False, 0
 
 def generate_composition(
@@ -170,7 +170,7 @@ def generate_composition(
         return True, len(token_ids)
 
     except Exception as e:
-        print(f'  ⚠️  MIDI conversion failed: {e}')
+        print(f'  MIDI conversion failed: {e}')
         return False, 0
 
 
@@ -212,7 +212,7 @@ def _fallback_export(score, out_path, token_ids):
             return False, 0
 
     except Exception as e:
-        print(f'  ⚠️  Fallback export failed: {e}')
+        print(f'  Fallback export failed: {e}')
         return False, 0
 
 
@@ -257,16 +257,16 @@ def main():
                 m     = pretty_midi.PrettyMIDI(out_path)
                 notes = sum(len(inst.notes) for inst in m.instruments)
                 dur   = m.get_end_time()
-                print(f'  [{i+1}/10] ✅ {os.path.basename(out_path)} | '
+                print(f'  [{i+1}/10] {os.path.basename(out_path)} | '
                       f'tokens={n_tokens} | notes={notes} | duration={dur:.1f}s | '
                       f'T={cfg["temperature"]} top_k={cfg["top_k"]}')
                 saved += 1
             except Exception as e:
-                print(f'  [{i+1}/10] ⚠️  Generated but unreadable: {e}')
+                print(f'  [{i+1}/10] Generated but unreadable: {e}')
         else:
-            print(f'  [{i+1}/10] ❌ Failed')
+            print(f'  [{i+1}/10] Failed')
 
-    print(f'\n✅ {saved}/10 compositions saved to {out_dir}')
+    print(f'\n{saved}/10 compositions saved to {out_dir}')
 
 
 if __name__ == '__main__':

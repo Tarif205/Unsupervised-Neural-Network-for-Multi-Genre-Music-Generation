@@ -89,7 +89,7 @@ class GrooveDataset(Dataset):
         # normalize to [0,1]
         x = x / 127.0
 
-        # 🔥 convert to binary piano roll
+        # convert to binary piano roll
         x = (x > 0).astype(np.float32)
 
         return torch.from_numpy(x)

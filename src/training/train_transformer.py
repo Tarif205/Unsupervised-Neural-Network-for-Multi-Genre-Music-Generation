@@ -179,7 +179,7 @@ def main():
         if vl_loss < best_val_loss:
             best_val_loss = vl_loss
             torch.save(model.state_dict(), best_path)
-            print(f'  ✅ Saved best model (val_ppl={vl_ppl:.2f})')
+            print(f'  Saved best model (val_ppl={vl_ppl:.2f})')
 
     torch.save(model.state_dict(), final_path)
 
@@ -212,7 +212,7 @@ def main():
     plt.savefig(plot_path, dpi=150)
     plt.close()
 
-    print(f'\n✅ Training complete!')
+    print(f'\nTraining complete!')
     print(f'   Best Val Loss      : {best_val_loss:.4f}')
     print(f'   Best Val Perplexity: {compute_perplexity(best_val_loss):.2f}')
     print(f'   Plot saved → {plot_path}')

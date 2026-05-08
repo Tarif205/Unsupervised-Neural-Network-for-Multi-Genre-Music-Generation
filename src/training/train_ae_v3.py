@@ -63,7 +63,7 @@ def main():
         dropout    = DROPOUT,
     ).to(DEVICE)
 
-    # Faculty recommended: Focal Loss
+    # recommended: Focal Loss
     criterion = FocalLoss(gamma=2.0, pos_weight=20)
     optimizer = torch.optim.Adam(model.parameters(), lr=LR)
 
@@ -84,7 +84,8 @@ def main():
         if vl < best_val:
             best_val = vl
             torch.save(model.state_dict(), best_path)
-            print(f'  ✅ Saved best model')
+            print(f'  Saved best model')
+            torch.save(model.state_dict(), best_path)
 
     # Plot
     plt.figure(figsize=(8, 5))
@@ -97,7 +98,7 @@ def main():
     plt.tight_layout()
     plt.savefig(os.path.join(PLOT_DIR, 'task1_ae_v3_loss.png'), dpi=150)
     plt.close()
-    print('✅ Training complete!')
+    print('Training complete!')
 
 
 if __name__ == '__main__':

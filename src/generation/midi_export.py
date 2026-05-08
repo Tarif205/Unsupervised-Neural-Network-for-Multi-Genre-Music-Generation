@@ -96,7 +96,7 @@
 #                     end = t
 #                     active = False
 
-#                     # 🔥 Split long notes
+#                     # Split long notes
 #                     cur = start
 #                     while cur < end:
 #                         split_end = min(cur + MAX_NOTE_LEN, end)
@@ -144,7 +144,7 @@ def piano_roll_to_midi(piano_roll, output_path, fs=16, threshold=0.05):
 
     midi = pretty_midi.PrettyMIDI()
 
-    # 🔥 IMPORTANT: drum mode
+    # IMPORTANT: drum mode
     instrument = pretty_midi.Instrument(program=0, is_drum=True)
 
     T, P = piano_roll.shape

@@ -32,7 +32,7 @@ def main():
 
     model.load_state_dict(torch.load(model_path, map_location=DEVICE, weights_only=True))
     model.eval()
-    print(f'✅ Loaded VAE model: {model_path}')
+    print(f'Loaded VAE model: {model_path}')
 
     with torch.no_grad():
         samples = model.sample(num_samples=8, seq_len=SEQ_LEN, device=DEVICE)
@@ -53,7 +53,7 @@ def main():
         dur   = m.get_end_time()
         print(f'  [{i+1}/8] Notes:{notes} | Duration:{dur:.1f}s | {os.path.basename(path)}')
 
-    print(f'\n✅ 8 MIDI samples saved to {out_dir}')
+    print(f'\n8 MIDI samples saved to {out_dir}')
 
 
 if __name__ == '__main__':

@@ -1,7 +1,5 @@
 # src/config.py
-# ─────────────────────────────────────────────────────────────
-# Central config — edit here, imports everywhere else stay clean
-# ─────────────────────────────────────────────────────────────
+
 import os
 import torch
 
@@ -29,10 +27,10 @@ GENRES          = ["drums", "rhythm"]    # genres present in this dataset
 REPRESENTATION = "piano_roll"
 
 # ── Preprocessing / windowing ─────────────────────────────────
-# Faculty guide: "At fs=16, 128 time steps = 8 seconds of music"
-# We use fs=100 (10ms resolution) with 128 frames = 1.28 seconds
+# guide: "At fs=16, 128 time steps = 8 seconds of music"
+# We use fs=88 (10ms resolution) with 128 frames = 1.28 seconds
 # This gives finer timing resolution for piano music
-SEQ_LEN      = 128   # faculty minimum — covers ~1.28s at fs=100
+SEQ_LEN      = 128   # minimum — covers ~1.28s at fs=100
 FEATURE_SIZE = 88    # piano keys MIDI 21 (A0) to 108 (C8)
 MIDI_FS      = 16   # frames per second (10ms resolution)
 
@@ -53,18 +51,18 @@ VAL_RATIO   = 0.10
 TEST_RATIO  = 0.10
 
 # ── Model (Task 1 & 2 shared LSTM backbone) ───────────────────
-# Faculty: "2-layer LSTM, hidden 256, latent 64 is reasonable"
+# "2-layer LSTM, hidden 256, latent 64 is reasonable"
 HIDDEN_DIM = 256
-LATENT_DIM = 64     # faculty says 64 or 128
+LATENT_DIM = 64     # says 64 or 128
 NUM_LAYERS = 2
 DROPOUT    = 0.3
 
 # ── Training ──────────────────────────────────────────────────
-# Faculty: "batch size 64, reduce to 32 if GPU memory insufficient"
+# guide: "batch size 64, reduce to 32 if GPU memory insufficient"
 # RTX 3050 4GB → use 32
 BATCH_SIZE = 32
 EPOCHS     = 30     # more epochs needed with focal loss
-LR         = 1e-3   # faculty: "Adam with lr=1e-3 as starting point"
+LR         = 1e-3   # guide: "Adam with lr=1e-3 as starting point"
 CLIP_GRAD  = 1.0
 SEED       = 42
 
@@ -80,7 +78,7 @@ TF_DROPOUT      = 0.1
 TF_MAX_LEN      = 512
 
 # ── Generation ────────────────────────────────────────────────
-# Faculty: "lower threshold below 0.5 since model underestimates notes"
+# guide: "lower threshold below 0.5 since model underestimates notes"
 MIDI_THRESHOLD = 0.15
 MIDI_TEMPO     = 120.0
 
