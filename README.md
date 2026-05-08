@@ -2,201 +2,135 @@
 
 Course: **CSE425 / EEE474 Neural Networks**
 
-This project implements **unsupervised deep learning models for music generation using MIDI datasets**.
-The system learns musical structure such as melody, rhythm, and harmony, and generates new music sequences.
+This project implements **unsupervised deep learning models for music generation using MIDI datasets**. 
+The system learns musical structure such as melody, rhythm, and harmony, and generates new music sequences using various architectures including LSTM Autoencoders, Variational Autoencoders (VAE), and Transformers.
 
 ---
 
-# Project Structure
+## MIDI Files (Google Drive)
 
-```
-music-generation-unsupervised/
-
-README.md
-requirements.txt
-
-data/
-    raw_midi/
-    processed/
-    train_test_split/
-
-notebooks/
-
-src/
-    config.py
-    preprocessing/
-    models/
-    training/
-    evaluation/
-    generation/
-
-outputs/
-    generated_midis/
-    plots/
-    survey_results/
-
-report/
-```
+The generated MIDI files and model checkpoints can be found at the following link:
+[MIDI Drive Link](https://drive.google.com/drive/folders/1Xh4Pe0oVxH9r1ffkLABWkQvUrdw80F2R?usp=sharing)
 
 ---
 
-# Requirements
+## Group Contributions
+
+| Name | Contribution |
+| :--- | :--- |
+| **Nasrul Azam Raf** | EDA + Preprocessing |
+| **Asif Islam** | Task 1 (Autoencoder) and Task 2 (VAE) |
+| **Kazi Tarif Rahman** | Task 3 (Transformer) |
+
+---
+
+## File Overview
+
+### Notebooks
+- `Task1_LSTM_Autoencoder.ipynb`: Implementation, training, and evaluation of the Task 1 LSTM Autoencoder.
+- `Task2_VAE.ipynb`: Implementation, training, and evaluation of the Task 2 Variational Autoencoder.
+- `Task3_Transformer.ipynb`: Implementation, training, and evaluation of the Task 3 Transformer-based generator.
+- `preprocessing.ipynb`: Exploratory Data Analysis and data preparation.
+- `baseline_markov.ipynb`: Markov Chain baseline implementation for comparison.
+
+### Source Code (`src/`)
+- **`models/`**: Core model architectures.
+  - `autoencoder.py`: LSTM Autoencoder model.
+  - `vae.py`: Variational Autoencoder model.
+  - `transformer.py`: GPT-style Transformer Decoder model.
+- **`training/`**: Training scripts for each task.
+  - `train_ae_v3.py`: Training script for Task 1.
+  - `train_vae.py`: Training script for Task 2.
+  - `train_transformer.py`: Training script for Task 3.
+- **`generation/`**: Scripts for generating MIDI samples from trained models.
+  - `generate_task1_reconstruction.py`: Task 1 generation.
+  - `generate_task2_samples.py`: Task 2 generation.
+  - `generate_task3.py`: Task 3 generation.
+  - `midi_export.py`: Utilities for converting model outputs back to MIDI files.
+- **`preprocessing/`**: Data parsing and tokenization.
+  - `midi_parser.py`: Parses raw MIDI files into numerical representations.
+  - `tokenize_midi.py`: Converts MIDI files into REMI token sequences for the Transformer.
+- **`evaluation/`**: Metric calculation.
+  - `metrics.py`: Unified evaluation framework.
+  - `pitch_histogram.py`: Pitch distribution analysis.
+  - `rhythm_score.py`: Rhythm diversity and repetition metrics.
+- `config.py`: Global configuration and hyperparameters.
+- `dataset.py`: PyTorch Dataset implementation for piano rolls.
+
+---
+
+## Requirements
 
 The project uses **Python 3.9+**.
 
 Main libraries:
-
 * PyTorch
 * NumPy
-* Pandas
 * PrettyMIDI
-* Music21
+* Miditok
 * Matplotlib
 * Scikit-learn
 * Jupyter Notebook
 
-All dependencies are listed in **requirements.txt**.
+All dependencies are listed in `requirements.txt`.
 
 ---
 
-# Installing Dependencies
+## Installing Dependencies
 
-## 1. Create a Virtual Environment (Recommended)
+### 1. Create a Virtual Environment (Recommended)
 
-### Windows (PowerShell)
-
-```
+#### Windows (PowerShell)
+```powershell
 python -m venv venv
-```
-
-Activate the environment:
-
-```
 venv\Scripts\activate
 ```
 
-### Linux / macOS
-
-```
+#### Linux / macOS
+```bash
 python3 -m venv venv
 source venv/bin/activate
 ```
 
----
-
-## 2. Install Libraries Using requirements.txt
-
-Run the following command inside the project directory:
-
-```
+### 2. Install Libraries
+```bash
 pip install -r requirements.txt
 ```
 
-This command will automatically install **all required libraries** listed in the requirements file.
-
 ---
 
-# Running the Project
+## Running the Project
 
 ### Step 1 — Place MIDI Dataset
-
-Put all MIDI files inside:
-
-```
-data/raw_midi/
-```
-
-Example dataset:
-
-* Lakh MIDI Dataset
-* MAESTRO Dataset
-
-**Note:** The `data/processed/` directory containing preprocessed `.npy` files is not included in this repository due to size constraints (2.6+ GB). Run the preprocessing pipeline to generate these files locally.
-
----
+Put your MIDI files inside `data/raw_midi/`.
 
 ### Step 2 — Run Preprocessing
-
-Preprocess the MIDI files using the preprocessing module.
-
-Example:
-
-```
+For Task 1 & 2:
+```bash
 python src/preprocessing/midi_parser.py
 ```
-
----
-
-### Step 3 — Train the Model
-
-Train the Autoencoder model:
-
-```
-python src/training/train_ae.py
+For Task 3:
+```bash
+python src/preprocessing/tokenize_midi.py
 ```
 
-Train the VAE model:
+### Step 3 — Train and Generate
+You can run the training and generation scripts directly or use the provided Jupyter Notebooks for a more interactive experience.
 
-```
-python src/training/train_vae.py
-```
-
-Train the Transformer model:
-
-```
+Example for Task 3:
+```bash
 python src/training/train_transformer.py
+python src/generation/generate_task3.py
 ```
+
+Generated MIDI files will be saved in `outputs/generated_midis/`.
 
 ---
 
-# Generating Music
-
-After training, generate new music samples:
-
-```
-python src/generation/generate_music.py
-```
-
-Generated MIDI files will be saved in:
-
-```
-outputs/generated_midis/
-```
-
-You can open them using any MIDI player or DAW.
-
----
-
-# Evaluation
-
+## Evaluation
 Evaluation metrics include:
+* **Pitch Histogram Similarity**: Measures how well the model captures the pitch distribution.
+* **Rhythm Diversity Score**: Evaluates the variety of rhythmic patterns.
+* **Repetition Ratio**: Measures the amount of repetition in the generated sequences.
 
-* Pitch Histogram Similarity
-* Rhythm Diversity Score
-* Repetition Ratio
-* Human Listening Score
-
-Evaluation scripts are located in:
-
-```
-src/evaluation/
-```
-
----
-
-# Outputs
-
-Generated results will be stored in:
-
-```
-outputs/generated_midis/
-outputs/plots/
-outputs/survey_results/
-```
-
----
-
-# Authors
-
-Group Project — Neural Networks
-Department of CSE
+Evaluation scripts are located in `src/evaluation/`.
