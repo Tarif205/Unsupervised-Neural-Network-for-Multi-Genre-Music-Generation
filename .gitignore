@@ -15,3 +15,8 @@ data/processed/
 
 # OS
 .DS_Store
+
+data/raw_midi/
+*.zip
+outputs/models/
+outputs/generated_midis/
